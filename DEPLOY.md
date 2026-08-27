@@ -8,17 +8,19 @@ Panduan lengkap dari nol sampai production.
 
 1. [Persiapan VPS](#1-persiapan-vps)
 2. [Install Docker & Docker Compose](#2-install-docker--docker-compose)
-3. [Setup Domain & DNS](#3-setup-domain--dns)
-4. [Clone Project ke VPS](#4-clone-project-ke-vps)
-5. [Konfigurasi Environment](#5-konfigurasi-environment)
-6. [Build & Jalankan Aplikasi](#6-build--jalankan-aplikasi)
-7. [Setup Nginx Reverse Proxy + SSL](#7-setup-nginx-reverse-proxy--ssl)
-8. [Setup Firewall](#8-setup-firewall)
-9. [Setup Auto Backup Database](#9-setup-auto-backup-database)
-10. [Setup Auto Restart & Monitoring](#10-setup-auto-restart--monitoring)
-11. [Konfigurasi Webhook External](#11-konfigurasi-webhook-external)
-12. [Perintah Operasional Sehari-hari](#12-perintah-operasional-sehari-hari)
-13. [Troubleshooting](#13-troubleshooting)
+3. [Setup Akses Public (Pilih Salah Satu)](#3-setup-akses-public-pilih-salah-satu)
+4. [Buat Telegram Bot](#4-buat-telegram-bot)
+5. [Daftar & Konfigurasi Digiflazz API](#5-daftar--konfigurasi-digiflazz-api)
+6. [Clone Project ke VPS](#6-clone-project-ke-vps)
+7. [Konfigurasi Environment](#7-konfigurasi-environment)
+8. [Build & Jalankan Aplikasi](#8-build--jalankan-aplikasi)
+9. [Setup Nginx Reverse Proxy + SSL](#9-setup-nginx-reverse-proxy--ssl)
+10. [Setup Firewall](#10-setup-firewall)
+11. [Setup Auto Backup Database](#11-setup-auto-backup-database)
+12. [Setup Auto Restart & Monitoring](#12-setup-auto-restart--monitoring)
+13. [Konfigurasi Webhook External](#13-konfigurasi-webhook-external)
+14. [Perintah Operasional Sehari-hari](#14-perintah-operasional-sehari-hari)
+15. [Troubleshooting](#15-troubleshooting)
 
 ---
 
@@ -32,6 +34,8 @@ Panduan lengkap dari nol sampai production.
 | RAM | 1 GB | 2 GB |
 | CPU | 1 Core | 2 Core |
 | Storage | 20 GB SSD | 40 GB SSD |
+
+Rekomendasi provider VPS: DigitalOcean, Vultr, Hetzner, Linode, AWS Lightsail.
 
 ### Akses VPS via SSH
 
@@ -100,12 +104,6 @@ docker --version
 docker compose version
 ```
 
-Output yang diharapkan:
-```
-Docker version 24.x.x atau lebih baru
-Docker Compose version v2.x.x
-```
-
 ### Start Docker otomatis saat boot
 
 ```bash
@@ -115,42 +113,305 @@ sudo systemctl start docker
 
 ---
 
-## 3. Setup Domain & DNS
+## 3. Setup Akses Public (Pilih Salah Satu)
 
-### Beli Domain
+Aplikasi ini butuh URL public agar webhook dari BukaOlshop, Digiflazz, dan payment gateway bisa mengirim data ke server Anda. Ada 3 opsi:
 
-Beli domain dari registrar manapun (Namecheap, Cloudflare, Niagahoster, dll).
+### Opsi A: Tanpa Domain — Pakai IP VPS Langsung (Paling Mudah)
 
-### Konfigurasi DNS
+Tidak perlu beli domain. Langsung pakai IP VPS.
 
-Tambah DNS record di panel domain Anda:
+**Kelebihan:** Gratis, langsung jalan.
+**Kekurangan:** Tidak bisa pakai HTTPS (SSL), URL kurang profesional.
+
+Catat IP VPS Anda:
+```
+Contoh: 123.456.789.0
+```
+
+URL webhook Anda akan menjadi:
+```
+http://123.456.789.0:3000/api/webhook/bukaolshop
+http://123.456.789.0:3000/api/webhook/digiflazz
+http://123.456.789.0:3000/api/webhook/payment
+```
+
+**Langkah:** Lanjut ke langkah 4 (tidak perlu setup DNS/Nginx/SSL). Aplikasi bisa diakses langsung di `http://IP_VPS:3000`.
+
+> **Catatan:** Beberapa payment provider **mewajibkan HTTPS**. Jika payment provider Anda mensyaratkan HTTPS, gunakan Opsi B atau C.
+
+---
+
+### Opsi B: Domain Gratis dari freedns.afraid.org / DuckDNS / No-IP (Gratis + Bisa HTTPS)
+
+**Kelebihan:** Gratis, bisa pakai HTTPS.
+**Kekurangan:** Subdomain kurang profesional, perlu perpanjang manual.
+
+#### Step 1: Daftar dan Buat Subdomain
+
+**DuckDNS** (paling mudah):
+1. Buka https://www.duckdns.org
+2. Login dengan Google/GitHub
+3. Buat subdomain, contoh: `bukaolshop-app.duckdns.org`
+4. Isi IP VPS Anda di kolom IP
+5. Klik "update"
+
+**No-IP** (alternatif):
+1. Buka https://www.noip.com
+2. Daftar akun gratis
+3. Buat hostname, contoh: `bukaolshop-app.ddns.net`
+4. Set IP ke VPS Anda
+
+#### Step 2: Verifikasi DNS
+
+```bash
+# Tunggu 1-2 menit, lalu cek
+ping bukaolshop-app.duckdns.org
+# Harus resolve ke IP VPS Anda
+```
+
+#### Step 3: Lanjut ke langkah 8 untuk setup Nginx + SSL
+
+Gunakan `bukaolshop-app.duckdns.org` sebagai `server_name` di Nginx.
+
+---
+
+### Opsi C: Beli Domain Sendiri (Rekomendasi untuk Production)
+
+**Kelebihan:** Profesional, HTTPS, full kontrol.
+**Kekurangan:** Bayar ~Rp 100-150rb/tahun.
+
+#### Step 1: Beli Domain
+
+Beli dari: Cloudflare (paling murah), Namecheap, Niagahoster, Domainesia.
+
+#### Step 2: Konfigurasi DNS
+
+Tambah DNS record di panel domain:
 
 | Type | Name | Value | TTL |
 |------|------|-------|-----|
 | A | `@` | `IP_VPS_ANDA` | 300 |
 | A | `api` | `IP_VPS_ANDA` | 300 |
 
-Contoh: jika domain Anda `domainanda.com`, maka:
+Contoh: domain `domainanda.com`:
 - `domainanda.com` → IP VPS
 - `api.domainanda.com` → IP VPS (untuk webhook)
 
-### Verifikasi DNS
+#### Step 3: Verifikasi DNS
 
-Tunggu 5-15 menit, lalu cek:
+Tunggu 5-15 menit:
 ```bash
 dig api.domainanda.com +short
-# Harus output: IP_VPS_ANDA
+# Output: IP_VPS_ANDA
 ```
+
+#### Step 4: Lanjut ke langkah 8 untuk setup Nginx + SSL
 
 ---
 
-## 4. Clone Project ke VPS
+## 4. Buat Telegram Bot
 
-### Install Git (sudah diinstall di langkah 1)
+Bot Telegram digunakan untuk:
+- Menerima notifikasi order, pembayaran, dan transaksi
+- Cek saldo Digiflazz
+- Cek status order/transaksi
+- Laporan harian
+- Sinkronisasi produk
 
-```bash
-git --version
+### Step 1: Buat Bot via BotFather
+
+1. Buka Telegram, cari **@BotFather** (pastikan centang biru/verified)
+2. Kirim perintah: `/newbot`
+3. BotFather akan minta:
+   - **Nama bot**: `BukaOlshop Bot` (bebas, ini display name)
+   - **Username bot**: `bukaolshop_xxx_bot` (harus unik, harus diakhiri `bot`)
+4. BotFather akan memberikan **TOKEN** seperti:
+   ```
+   123456789:ABCdefGHIjklMNOpqrsTUVwxyz
+   ```
+5. **CATAT TOKEN INI** — ini yang dimasukkan ke `.env` sebagai `TELEGRAM_BOT_TOKEN`
+
+### Step 2: Dapatkan Telegram User ID Anda
+
+Bot ini hanya bisa diakses oleh admin. Anda perlu tahu Telegram User ID Anda.
+
+1. Buka Telegram, cari **@userinfobot**
+2. Kirim pesan apapun ke bot tersebut
+3. Bot akan membalas dengan info Anda, catat angka di `Id:` — ini adalah **Telegram User ID** Anda
+   ```
+   Id: 123456789
+   ```
+
+Jika ada beberapa admin, minta masing-masing kirim pesan ke @userinfobot.
+
+### Step 3: Konfigurasi di .env
+
+Nanti di langkah 6, isi `.env` dengan:
+
+```env
+TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
+TELEGRAM_ADMIN_IDS=123456789,987654321
 ```
+
+- `TELEGRAM_BOT_TOKEN` = token dari BotFather
+- `TELEGRAM_ADMIN_IDS` = Telegram User ID (bisa lebih dari 1, pisahkan koma)
+
+### Step 4: Matikan Privacy Mode (Penting!)
+
+Agar bot bisa membaca semua pesan di grup (jika diperlukan):
+
+1. Buka chat dengan **@BotFather**
+2. Kirim: `/mybots`
+3. Pilih bot Anda
+4. Pilih **Bot Settings** → **Group Privacy**
+5. Pilih **Turn off** (disable privacy mode)
+
+> **Catatan:** Bot ini menggunakan mode **polling** (bukan webhook). Artinya bot aktif mengecek pesan baru secara periodik. Tidak perlu setup webhook Telegram — bot akan langsung merespon begitu container dijalankan.
+
+### Step 5: Test Bot (Setelah Deploy)
+
+Setelah aplikasi berjalan (langkah 7), buka Telegram:
+1. Cari username bot Anda (contoh: `@bukaolshop_xxx_bot`)
+2. Kirim `/start`
+3. Kirim `/menu` — harus muncul menu inline
+4. Kirim `/saldo` — harus muncul saldo Digiflazz (jika sudah dikonfigurasi)
+
+---
+
+## 5. Daftar & Konfigurasi Digiflazz API
+
+Digiflazz adalah supplier digital produk (pulsa, paket data, token listrik, voucher game, dll). Aplikasi ini terhubung ke API Digiflazz untuk:
+- Mengecek saldo deposit
+- Mengambil daftar produk (pricelist)
+- Membuat transaksi top-up
+- Menerima callback status transaksi via webhook
+
+### Step 1: Daftar Akun Digiflazz
+
+1. Buka https://digiflazz.com
+2. Klik **Daftar** atau **Register**
+3. Isi data: nama, email, nomor HP, password
+4. Verifikasi email dan nomor HP
+5. Login ke dashboard
+
+### Step 2: Dapatkan Credentials
+
+Setelah login di dashboard Digiflazz:
+
+1. Buka menu **Pengaturan** atau **Settings** → **API**
+2. Anda akan melihat:
+   - **Username** — username akun Digiflazz Anda
+   - **API Key** — string acak untuk autentikasi API
+3. **CATAT KEDUA VALUE INI** — ini yang dimasukkan ke `.env`
+
+Contoh:
+```
+Username: tokosaya
+API Key: a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
+```
+
+### Step 3: Top Up Deposit
+
+Sebelum bisa bertransaksi, Anda harus punya saldo deposit di Digiflazz.
+
+1. Di dashboard Digiflazz, buka menu **Deposit**
+2. Pilih metode: Transfer Bank, Virtual Account, atau QRIS
+3. Transfer sesuai nominal yang diinginkan
+4. Tunggu konfirmasi (biasanya instan untuk VA/QRIS)
+5. Saldo akan muncul di dashboard
+
+**Minimum deposit:** Rp 10.000 (bervariasi, cek dashboard)
+
+### Step 4: Set Callback URL (Webhook)
+
+Agar aplikasi menerima notifikasi otomatis saat transaksi selesai:
+
+1. Di dashboard Digiflazz, buka **Pengaturan** → **Callback URL**
+2. Isi dengan URL webhook Anda:
+
+| Opsi Akses | Callback URL |
+|------------|-------------|
+| Opsi A (IP langsung) | `http://IP_VPS:3000/api/webhook/digiflazz` |
+| Opsi B (DuckDNS) | `https://bukaolshop-app.duckdns.org/api/webhook/digiflazz` |
+| Opsi C (Domain) | `https://api.domainanda.com/api/webhook/digiflazz` |
+
+3. Simpan
+
+> **Catatan:** Callback URL baru bisa diisi setelah aplikasi berjalan di VPS (langkah 8). Untuk sementara, skip step ini dan kembali lagi setelah deploy.
+
+### Step 5: Konfigurasi di .env
+
+Di langkah 7 nanti, isi `.env` dengan:
+
+```env
+DIGIFLAZZ_USERNAME=tokosaya
+DIGIFLAZZ_API_KEY=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
+DIGIFLAZZ_BASE_URL=https://api.digiflazz.com
+DIGIFLAZZ_WEBHOOK_SECRET=
+```
+
+- `DIGIFLAZZ_USERNAME` = username dari dashboard Digiflazz
+- `DIGIFLAZZ_API_KEY` = API key dari dashboard Digiflazz
+- `DIGIFLAZZ_BASE_URL` = `https://api.digiflazz.com` (jangan diubah)
+- `DIGIFLAZZ_WEBHOOK_SECRET` = kosongkan jika tidak dipakai (opsional, untuk verifikasi signature webhook)
+
+### Step 6: Test Koneksi (Setelah Deploy)
+
+Setelah aplikasi berjalan (langkah 8), test koneksi Digiflazz:
+
+**Via Telegram Bot:**
+```
+/saldo
+```
+Bot akan membalas dengan saldo deposit Digiflazz Anda.
+
+**Via curl:**
+```bash
+curl http://localhost:3000/health
+```
+Response harus menampilkan `"digiflazz": "configured"`.
+
+**Sinkronisasi produk pertama kali:**
+```
+/sync
+```
+di Telegram bot. Ini akan mengambil semua produk dari Digiflazz dan menyimpannya ke database.
+
+### Cara Kerja Integrasi Digiflazz
+
+Aplikasi ini menggunakan API Digiflazz dengan alur:
+
+```
+1. Customer order di BukaOlshop
+   ↓
+2. Aplikasi buat transaksi ke Digiflazz API (/v1/transaction)
+   ↓
+3. Digiflazz proses top-up ke nomor customer
+   ↓
+4. Digiflazz kirim callback ke webhook URL (/api/webhook/digiflazz)
+   ↓
+5. Aplikasi update status order & kirim notifikasi Telegram
+```
+
+**Autentikasi API** menggunakan MD5 signature:
+```
+sign = MD5(username + api_key + ref_id)
+```
+Ini sudah ditangani otomatis oleh `src/integrations/digiflazz/client.ts`.
+
+### Endpoint API Digiflazz yang Digunakan
+
+| Endpoint | Fungsi | File |
+|----------|--------|------|
+| `POST /v1/cek-saldo` | Cek saldo deposit | `client.ts:40` |
+| `POST /v1/price-list` | Ambil daftar produk | `client.ts:50` |
+| `POST /v1/transaction` | Buat transaksi baru | `client.ts:66` |
+| `POST /v1/transaction` | Cek status transaksi | `client.ts:88` |
+
+---
+
+## 6. Clone Project ke VPS
 
 ### Clone Repository
 
@@ -180,7 +441,7 @@ mkdir -p mysql-conf
 
 ---
 
-## 5. Konfigurasi Environment
+## 7. Konfigurasi Environment
 
 ### Buat File .env
 
@@ -238,10 +499,10 @@ PAYMENT_WEBHOOK_SECRET=isi_webhook_secret
 PAYMENT_CALLBACK_URL=https://api.domainanda.com/api/webhook/payment
 
 # ============================================
-# TELEGRAM
+# TELEGRAM (dari langkah 4)
 # ============================================
-TELEGRAM_BOT_TOKEN=isi_dari_botfather
-TELEGRAM_ADMIN_IDS=telegram_id_anda,telegram_id_admin_lain
+TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
+TELEGRAM_ADMIN_IDS=123456789,987654321
 
 # ============================================
 # SECURITY
@@ -250,9 +511,25 @@ RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX=100
 ```
 
-### Tips Password MySQL
+### Contoh .env untuk Setiap Opsi Akses
 
-Generate password kuat:
+**Opsi A (IP langsung, tanpa domain):**
+```env
+PAYMENT_CALLBACK_URL=http://123.456.789.0:3000/api/webhook/payment
+```
+
+**Opsi B (DuckDNS gratis):**
+```env
+PAYMENT_CALLBACK_URL=https://bukaolshop-app.duckdns.org/api/webhook/payment
+```
+
+**Opsi C (Domain sendiri):**
+```env
+PAYMENT_CALLBACK_URL=https://api.domainanda.com/api/webhook/payment
+```
+
+### Tips Generate Password Kuat
+
 ```bash
 openssl rand -base64 32
 ```
@@ -260,7 +537,7 @@ openssl rand -base64 32
 **PENTING**: 
 - `DATABASE_URL` di dalam container, hostname MySQL adalah `mysql` (nama service di docker-compose), BUKAN `localhost`.
 - `MYSQL_ROOT_PASSWORD` harus sama dengan password di `DATABASE_URL`.
-- `PAYMENT_CALLBACK_URL` harus menggunakan domain production Anda.
+- `TELEGRAM_BOT_TOKEN` dan `TELEGRAM_ADMIN_IDS` wajib diisi agar bot berfungsi.
 
 ### Simpan dan Keluar
 
@@ -268,7 +545,7 @@ Tekan `Ctrl+X`, lalu `Y`, lalu `Enter`.
 
 ---
 
-## 6. Build & Jalankan Aplikasi
+## 8. Build & Jalankan Aplikasi
 
 ### Build Docker Image dan Jalankan
 
@@ -281,7 +558,7 @@ Proses ini akan:
 2. Pull image MySQL 8.0
 3. Jalankan MySQL container
 4. Jalankan App container (setelah MySQL sehat)
-5. Prisma migrate otomatis saat container start
+5. Prisma migrate otomatis saat container start (via entrypoint.sh)
 
 ### Cek Status Container
 
@@ -312,9 +589,7 @@ docker compose logs -f mysql
 docker compose logs --tail 100 app
 ```
 
-### Jalankan Database Migration
-
-Container app seharusnya sudah otomatis menjalankan Prisma generate saat build. Tapi jika perlu migrate manual:
+### Jalankan Database Migration (Jika Tidak Otomatis)
 
 ```bash
 docker compose exec app npx prisma migrate deploy
@@ -342,9 +617,20 @@ Expected output:
 
 **Jika database "error"**, tunggu beberapa detik dan cek lagi — MySQL mungkin masih dalam proses inisialisasi.
 
+### Verifikasi Telegram Bot
+
+Cek log app, harus ada:
+```
+Telegram bot started
+```
+
+Buka Telegram, kirim `/start` ke bot Anda. Jika bot merespon, bot sudah berjalan.
+
 ---
 
-## 7. Setup Nginx Reverse Proxy + SSL
+## 9. Setup Nginx Reverse Proxy + SSL
+
+> **Lewati langkah ini jika pakai Opsi A (IP langsung tanpa domain).**
 
 ### Install Nginx
 
@@ -366,12 +652,33 @@ sudo apt install -y certbot python3-certbot-nginx
 sudo nano /etc/nginx/sites-available/bukaolshop
 ```
 
-Isi dengan:
-
+**Untuk Opsi C (domain sendiri):**
 ```nginx
 server {
     listen 80;
     server_name api.domainanda.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 90s;
+        proxy_connect_timeout 90s;
+    }
+}
+```
+
+**Untuk Opsi B (DuckDNS):**
+```nginx
+server {
+    listen 80;
+    server_name bukaolshop-app.duckdns.org;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
@@ -400,8 +707,14 @@ sudo systemctl reload nginx
 
 ### Install SSL Certificate
 
+**Domain sendiri:**
 ```bash
 sudo certbot --nginx -d api.domainanda.com
+```
+
+**DuckDNS:**
+```bash
+sudo certbot --nginx -d bukaolshop-app.duckdns.org
 ```
 
 Ikuti prompt:
@@ -415,61 +728,35 @@ Ikuti prompt:
 sudo certbot renew --dry-run
 ```
 
-### Cek Nginx Config Final
-
-```bash
-sudo cat /etc/nginx/sites-available/bukaolshop
-```
-
-Setelah certbot, config akan otomatis berubah menjadi:
-
-```nginx
-server {
-    listen 80;
-    server_name api.domainanda.com;
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl;
-    server_name api.domainanda.com;
-
-    ssl_certificate /etc/letsencrypt/live/api.domainanda.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api.domainanda.com/privkey.pem;
-    include /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-### Verifikasi SSL
+### Verifikasi
 
 ```bash
 curl -I https://api.domainanda.com/health
+# atau
+curl -I https://bukaolshop-app.duckdns.org/health
 ```
 
 ---
 
-## 8. Setup Firewall
+## 10. Setup Firewall
 
 ### Konfigurasi UFW
 
+**Jika pakai Nginx (Opsi B atau C):**
 ```bash
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 sudo ufw allow ssh
 sudo ufw allow 'Nginx Full'
+sudo ufw enable
+```
+
+**Jika pakai IP langsung (Opsi A):**
+```bash
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow ssh
+sudo ufw allow 3000/tcp
 sudo ufw enable
 ```
 
@@ -479,58 +766,13 @@ sudo ufw enable
 sudo ufw status verbose
 ```
 
-Output:
-```
-Status: active
-
-To                         Action      From
---                         ------      ----
-22/tcp                     ALLOW       Anywhere
-80,443/tcp (Nginx Full)    ALLOW       Anywhere
-```
-
 **PENTING**: Jangan buka port 3306 (MySQL) ke public! Akses database hanya dari dalam server.
-
-### Blokir Akses Langsung ke Port 3000
-
-Karena sudah ada Nginx, blokir akses langsung ke port 3000 dari luar:
-
-```bash
-sudo ufw deny 3000
-```
 
 ---
 
-## 9. Setup Auto Backup Database
+## 11. Setup Auto Backup Database
 
-### Edit Script Backup
-
-```bash
-nano scripts/backup.sh
-```
-
-Pastikan isi script sudah benar (sudah ada di project). Script ini akan:
-- Dump database MySQL
-- Compress ke .sql.gz
-- Simpan di `/var/backups/bukaolshop`
-- Hapus backup lebih dari 7 hari
-
-### Buat Direktori Backup
-
-```bash
-sudo mkdir -p /var/backups/bukaolshop
-sudo chown $USER:$USER /var/backups/bukaolshop
-```
-
-### Set Permission Script
-
-```bash
-chmod +x scripts/backup.sh
-```
-
-### Edit Script untuk Pakai Docker
-
-Karena MySQL berjalan di Docker, kita perlu modifikasi script backup. Buat script baru:
+### Buat Script Backup untuk Docker
 
 ```bash
 nano scripts/backup-docker.sh
@@ -589,30 +831,13 @@ Tambahkan baris:
 0 2 * * * /home/deploy/bukaolshop-digiflazz-qris/scripts/backup-docker.sh >> /var/log/bukaolshop-backup.log 2>&1
 ```
 
-### Verifikasi Cron
-
-```bash
-crontab -l
-```
-
 ---
 
-## 10. Setup Auto Restart & Monitoring
+## 12. Setup Auto Restart & Monitoring
 
 ### Docker Restart Policy
 
 Sudah diatur di `docker-compose.yml` dengan `restart: unless-stopped`. Container akan otomatis restart jika crash atau VPS reboot.
-
-### Verifikasi
-
-```bash
-# Simulasi: stop container, pastikan auto-restart
-docker compose stop app
-sleep 5
-docker compose ps
-# Container app harusnya restarting/running
-docker compose start app
-```
 
 ### Setup Log Rotation untuk Docker
 
@@ -638,8 +863,6 @@ sudo systemctl restart docker
 
 ### Monitoring Sederhana dengan Script
 
-Buat script monitoring:
-
 ```bash
 nano scripts/health-check.sh
 ```
@@ -659,12 +882,10 @@ if [ "$response" != "200" ]; then
     message="ALERT: bukaolshop-app DOWN! HTTP Status: $response"
     echo "[$(date)] $message"
     
-    # Kirim notifikasi ke Telegram
     curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
         -d "chat_id=$TELEGRAM_CHAT_ID" \
         -d "text=$message" > /dev/null
     
-    # Restart container
     cd /home/deploy/bukaolshop-digiflazz-qris
     docker compose restart app
 else
@@ -688,7 +909,7 @@ crontab -e
 
 ---
 
-## 11. Konfigurasi Webhook External
+## 13. Konfigurasi Webhook External
 
 ### BukaOlshop Webhook
 
@@ -696,6 +917,8 @@ Di dashboard BukaOlshop, set webhook URL ke:
 ```
 https://api.domainanda.com/api/webhook/bukaolshop
 ```
+Atau (Opsi A): `http://IP_VPS:3000/api/webhook/bukaolshop`
+Atau (Opsi B): `https://bukaolshop-app.duckdns.org/api/webhook/bukaolshop`
 
 ### Digiflazz Webhook
 
@@ -711,19 +934,13 @@ Di dashboard payment provider, set callback URL ke:
 https://api.domainanda.com/api/webhook/payment
 ```
 
-### Telegram Bot Webhook
+### Telegram Bot
 
-Set webhook Telegram bot:
-```bash
-curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
-  -d "url=https://api.domainanda.com/api/webhook/telegram"
-```
-
-Atau jika bot menggunakan polling (default Telegraf), tidak perlu set webhook.
+**Tidak perlu setup webhook Telegram.** Bot ini menggunakan mode **polling** (via Telegraf `bot.launch()`), artinya bot aktif mengecek pesan baru dari server Telegram secara periodik. Begitu container app berjalan, bot langsung aktif dan merespon perintah.
 
 ---
 
-## 12. Perintah Operasional Sehari-hari
+## 14. Perintah Operasional Sehari-hari
 
 ### Cek Status
 
@@ -782,32 +999,17 @@ docker compose exec mysql mysql -u root -p bukaolshop_db
 docker stats
 ```
 
-### Cek Disk Usage Docker
-
-```bash
-docker system df
-```
-
 ### Cleanup Docker (Jika Disk Penuh)
 
 ```bash
-docker system prune -af --volumes
-```
-
-**HATI-HATI**: Perintah ini menghapus SEMUA container, image, dan volume yang tidak terpakai. Volume MySQL akan ikut terhapus! Backup dulu sebelum menjalankan.
-
-Lebih aman:
-```bash
-# Hapus hanya image lama
+# Lebih aman — hapus hanya image/container lama
 docker image prune -a
-
-# Hapus hanya container stopped
 docker container prune
 ```
 
 ---
 
-## 13. Troubleshooting
+## 15. Troubleshooting
 
 ### Container App Terus Restart
 
@@ -823,18 +1025,22 @@ Kemungkinan penyebab:
 ### Database Connection Error
 
 ```bash
-# Cek MySQL sehat
 docker compose exec mysql mysqladmin ping -u root -p
-
-# Cek DATABASE_URL benar
 docker compose exec app printenv DATABASE_URL
 ```
+
+### Telegram Bot Tidak Merespon
+
+1. Cek log: `docker compose logs app | grep -i telegram`
+2. Pastikan `TELEGRAM_BOT_TOKEN` benar (cek di BotFather)
+3. Pastikan `TELEGRAM_ADMIN_IDS` berisi User ID Anda (bukan username)
+4. Kirim `/start` ke bot di Telegram
+5. Jika bot baru dibuat, pastikan privacy mode sudah dimatikan (langkah 4)
 
 ### Port 3000 Sudah Dipakai
 
 ```bash
 sudo lsof -i :3000
-# Kill proses yang memakai port
 sudo kill -9 PID_PROSES
 ```
 
@@ -873,11 +1079,6 @@ Jika RAM kurang dari 1GB, kurangi buffer MySQL di `mysql-conf/my.cnf`:
 innodb-buffer-pool-size = 64M
 ```
 
-Lalu restart:
-```bash
-docker compose restart mysql
-```
-
 ---
 
 ## Checklist Final
@@ -886,11 +1087,10 @@ Setelah semua langkah selesai, verifikasi:
 
 - [ ] `docker compose ps` → semua container `running (healthy)`
 - [ ] `curl http://localhost:3000/health` → `"status": "ok"`, `"database": "connected"`
-- [ ] `curl https://api.domainanda.com/health` → response 200 via HTTPS
+- [ ] Telegram bot merespon `/start` dan `/menu`
 - [ ] Webhook BukaOlshop terkonfigurasi
 - [ ] Webhook Digiflazz terkonfigurasi
 - [ ] Webhook Payment terkonfigurasi
-- [ ] Telegram bot merespon
 - [ ] Cron backup jalan (`crontab -l`)
 - [ ] Firewall aktif (`sudo ufw status`)
 - [ ] Auto-restart bekerja (reboot VPS, cek container hidup lagi)
