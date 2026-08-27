@@ -25,8 +25,9 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/prisma ./prisma
+COPY scripts/entrypoint.sh ./entrypoint.sh
 
-RUN chown -R appuser:nodejs /app
+RUN chown -R appuser:nodejs /app && chmod +x ./entrypoint.sh
 USER appuser
 
 EXPOSE 3000
@@ -34,4 +35,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-CMD ["node", "dist/server.js"]
+ENTRYPOINT ["./entrypoint.sh"]
