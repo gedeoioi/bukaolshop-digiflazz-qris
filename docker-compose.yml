@@ -9,7 +9,7 @@ services:
       MYSQL_USER: ${MYSQL_USER:-appuser}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-apppassword}
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./mysql-conf:/etc/mysql/conf.d
@@ -41,7 +41,7 @@ services:
       mysql:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       NODE_ENV: production
       PORT: 3000
