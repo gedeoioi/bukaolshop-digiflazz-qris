@@ -203,8 +203,8 @@ export function registerCommands(bot: Telegraf): void {
   });
 
   bot.action('menu_dashboard', async (ctx) => {
-    await ctx.answerCbQuery();
     try {
+      await ctx.answerCbQuery('Memuat dashboard...');
       const [balance, report] = await Promise.all([
         checkDigiflazzBalance(),
         getDailyReport(),
@@ -223,13 +223,15 @@ export function registerCommands(bot: Telegraf): void {
         { parse_mode: 'HTML' },
       );
     } catch (err) {
-      await ctx.editMessageText('❌ Gagal memuat dashboard.');
+      logger.error({ err }, 'Failed to load dashboard');
+      try { await ctx.answerCbQuery('Gagal memuat'); } catch {}
+      try { await ctx.editMessageText('❌ Gagal memuat dashboard.'); } catch {}
     }
   });
 
   bot.action('menu_saldo', async (ctx) => {
-    await ctx.answerCbQuery();
     try {
+      await ctx.answerCbQuery('Mengecek saldo...');
       const balance = await checkDigiflazzBalance();
       await ctx.editMessageText(
         '💰 <b>SALDO DIGIFLAZZ</b>\n\n' +
@@ -238,13 +240,15 @@ export function registerCommands(bot: Telegraf): void {
         { parse_mode: 'HTML' },
       );
     } catch (err) {
-      await ctx.editMessageText('❌ Gagal mengecek saldo.');
+      logger.error({ err }, 'Failed to check saldo');
+      try { await ctx.answerCbQuery('Gagal mengecek saldo'); } catch {}
+      try { await ctx.editMessageText('❌ Gagal mengecek saldo.'); } catch {}
     }
   });
 
   bot.action('menu_transaksi', async (ctx) => {
-    await ctx.answerCbQuery();
     try {
+      await ctx.answerCbQuery('Memuat transaksi...');
       const report = await getDailyReport();
       await ctx.editMessageText(
         '🛒 <b>TRANSAKSI HARI INI</b>\n\n' +
@@ -256,13 +260,15 @@ export function registerCommands(bot: Telegraf): void {
         { parse_mode: 'HTML' },
       );
     } catch (err) {
-      await ctx.editMessageText('❌ Gagal memuat transaksi.');
+      logger.error({ err }, 'Failed to load transaksi');
+      try { await ctx.answerCbQuery('Gagal memuat'); } catch {}
+      try { await ctx.editMessageText('❌ Gagal memuat transaksi.'); } catch {}
     }
   });
 
   bot.action('menu_laporan', async (ctx) => {
-    await ctx.answerCbQuery();
     try {
+      await ctx.answerCbQuery('Memuat laporan...');
       const report = await getDailyReport();
       await ctx.editMessageText(
         '📈 <b>LAPORAN HARI INI</b>\n\n' +
@@ -275,39 +281,53 @@ export function registerCommands(bot: Telegraf): void {
         { parse_mode: 'HTML' },
       );
     } catch (err) {
-      await ctx.editMessageText('❌ Gagal memuat laporan.');
+      logger.error({ err }, 'Failed to load laporan');
+      try { await ctx.answerCbQuery('Gagal memuat'); } catch {}
+      try { await ctx.editMessageText('❌ Gagal memuat laporan.'); } catch {}
     }
   });
 
   bot.action('menu_produk', async (ctx) => {
-    await ctx.answerCbQuery();
-    await ctx.editMessageText(
-      '📦 <b>PRODUK</b>\n\n' +
-      'Gunakan /produk <sku> untuk cek produk.\n' +
-      'Gunakan /sync untuk sinkronisasi dari Digiflazz.',
-      { parse_mode: 'HTML' },
-    );
+    try {
+      await ctx.answerCbQuery();
+      await ctx.editMessageText(
+        '📦 <b>PRODUK</b>\n\n' +
+        'Gunakan /produk <sku> untuk cek produk.\n' +
+        'Gunakan /sync untuk sinkronisasi dari Digiflazz.',
+        { parse_mode: 'HTML' },
+      );
+    } catch (err) {
+      logger.error({ err }, 'Failed to show produk menu');
+    }
   });
 
   bot.action('menu_pembayaran', async (ctx) => {
-    await ctx.answerCbQuery();
-    await ctx.editMessageText(
-      '💳 <b>PEMBAYARAN</b>\n\n' +
-      'Gunakan /order <invoice> untuk cek status pembayaran.',
-      { parse_mode: 'HTML' },
-    );
+    try {
+      await ctx.answerCbQuery();
+      await ctx.editMessageText(
+        '💳 <b>PEMBAYARAN</b>\n\n' +
+        'Gunakan /order <invoice> untuk cek status pembayaran.',
+        { parse_mode: 'HTML' },
+      );
+    } catch (err) {
+      logger.error({ err }, 'Failed to show pembayaran menu');
+    }
   });
 
   bot.action('menu_settings', async (ctx) => {
-    await ctx.answerCbQuery();
-    await ctx.editMessageText(
-      '⚙️ <b>SETTINGS</b>\n\n' +
-      'Konfigurasi melalui .env file.\n\n' +
-      `BukaOlshop: ${process.env.BUKAOLSHOP_API_URL ? '✅' : '❌'}\n` +
-      `Digiflazz: ${process.env.DIGIFLAZZ_USERNAME ? '✅' : '❌'}\n` +
-      `Payment: ${process.env.PAYMENT_PROVIDER ? '✅' : '❌'}\n` +
-      `Telegram: ✅`,
-      { parse_mode: 'HTML' },
-    );
+    try {
+      await ctx.answerCbQuery();
+      await ctx.editMessageText(
+        '⚙️ <b>SETTINGS</b>\n\n' +
+        'Konfigurasi melalui .env file.\n\n' +
+        `BukaOlshop: ${process.env.BUKAOLSHOP_API_URL ? '✅' : '❌'}\n` +
+        `Digiflazz: ${process.env.DIGIFLAZZ_USERNAME ? '✅' : '❌'}\n` +
+        `Payment: ${process.env.PAYMENT_PROVIDER ? '✅' : '❌'}\n` +
+        `Telegram: ✅`,
+        { parse_mode: 'HTML' },
+      );
+    } catch (err) {
+      logger.error({ err }, 'Failed to show settings menu');
+    }
   });
 }
